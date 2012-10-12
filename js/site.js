@@ -110,6 +110,13 @@ function GaiaSignal() {
 var Gaiajax = {};
 Gaiajax.api = (function(root) {
 	
+	var html4 = History.emulated.pushState;
+	
+	History.isTraditionalAnchor = function(url_or_hash) {  
+		return true;
+	};
+	
+	
 	var contentWrapperQ = "#contentWrapper";
 
 	var birthTime = new Date().getTime();
@@ -246,6 +253,9 @@ Gaiajax.api = (function(root) {
 		"setRootURL": function(value) {
 			rootURL = value;
 		}
+		,"enforceHTML4": function() {
+			html4 = true;
+		}
 		,"getRootURL": function() {
 			return rootURL;
 		}
@@ -318,10 +328,12 @@ Gaiajax.api = (function(root) {
 			setSWFAddressValue( path);
 		}
 		,"getDeeplink": function() {
-			var urler = rootURL ? History.getState().url.replace(rootURL, "") : History.getState().url.split("/").pop();
-			var path =  _pageHash[urler] ?  _pageHash[urler].path : "";
+			var urler = html4 ? SWFAddress.getValue().slice(1) : rootURL ? History.getState().url.replace(rootURL, "") : History.getState().url.split("/").pop(); 
+			var path =  html4 ? urler : _pageHash[urler] ?  _pageHash[urler].path : urler;  // todo: check if urler  reversion is okay or need explicit declartion (for mod-rewrite case)
 			var validBranch = _getValidBranch( path.split("/") );
-			return validDL( path.slice(validBranch.length) );
+			validBranch = path.slice(validBranch.length);  // the deeplink result
+			if (!validBranch &&  !html4) return SWFAddress.getValue(); 
+			return validDL( validBranch );
 		}
 		,"getTargetPage": function() {
 			return targetPageObj;
@@ -348,7 +360,7 @@ Gaiajax.api = (function(root) {
 			return currentContent;
 		}
 		,"getPreloadJS": function() { return _preloadJS; }
-		,"getValue": function() { var urler = rootURL ? History.getState().url.replace(rootURL, "") : History.getState().url.split("/").pop(); return "/"+(_pageHash[urler] ?  _pageHash[urler].path : ""); } //SWFAddress.getValue  // temp pop
+		,"getValue": function() { if (html4) return SWFAddress.getValue(); var urler = rootURL ? History.getState().url.replace(rootURL, "") : History.getState().url.split("/").pop(); return "/"+(_pageHash[urler] ?  _pageHash[urler].path : ""); } //SWFAddress.getValue  // temp pop
 		,"getTitle": function() { return window.document.title; } 
 		,"onDeeplink": _onDeeplink
 		,"onBeforeGoto": _onBeforeGoto
@@ -1040,14 +1052,21 @@ Gaiajax.api = (function(root) {
 			}
 		}
 		//alert(  History.getState().url.split("/").pop() );
-		//var tryPath = api.getValidBranch(  );  //SWFAddress.getValue().slice(1); // tem pop
-		_startPage =_pageHash[rootURL ? History.getState().url.replace(rootURL, "") : History.getState().url.split("/").pop()];
+		//var tryPath = api.getValidBranch( SWFAddress.getValue().slice(1) );  //// tem pop
+		_startPage = html4 ?  _pathHash[api.getValidBranch( SWFAddress.getValue().slice(1) )] : _pageHash[rootURL ? History.getState().url.replace(rootURL, "") : History.getState().url.split("/").pop()];
 
 		
 		var readyCall = (function() {	
 			
 			//SWFAddress.addEventListener(SWFAddressEvent.CHANGE, handleChange);
-			History.Adapter.bind(window,'statechange', handleChange);
+			if (!html4) {
+				History.Adapter.bind(window,'statechange', handleChange);
+				SWFAddress.addEventListener(SWFAddressEvent.CHANGE, hashChange);
+			}
+			else {
+				SWFAddress.addEventListener(SWFAddressEvent.CHANGE, handleChange);
+			}
+			//History.Adapter.bind(window,'onanchorchange', hashChange);
 		
 			api.bindHrefLinks( $("body a.gaiaHrefLink") );
 			api.bindRelLinks( $("body .gaiaRelLink") );
@@ -1103,15 +1122,18 @@ Gaiajax.api = (function(root) {
 	}
 	
 	function setSWFAddressValue(value) {
-		/*
-		try {
-			SWFAddress.setValue(value);
+		///*
+		if (html4) {
+			try {
+				SWFAddress.setValue(value);
+			}
+			catch(e) {
+				window.location = "#"+value;
+			}
+			return;
 		}
-		catch(e) {
-			window.location = "#"+value;
-		}
-		*/
-		if (_pathHash[value] == undefined) alert("SORRY");
+		//*/
+		//if (_pathHash[value] == undefined) alert("SORRY");
 
 		History.pushState(null, null, _pathHash[value].src);
 		
@@ -1157,7 +1179,14 @@ Gaiajax.api = (function(root) {
 		return str != "" ? str : "/";
 	}
 	
+	
+	function hashChange() {  // html5 hash change with SWFAddress
+		_onDeeplink.dispatch( api.getDeeplink() );
+	}
+
+	
 	function handleChange(e) {
+	
 		// something in prev project for depeciating
 		//if (hrefRelId == null && _isIn && currentContent!=null) currentContent.trigger(e.type, e);
 		//hrefRelId = null;
@@ -1166,10 +1195,12 @@ Gaiajax.api = (function(root) {
 		//	return;
 		//}
 		
+
 		var fullValue = api.getValue();
 	
 		var path = fullValue.slice(1);
 		// TODO: remove trailing slashes for path??
+	
 		
 		var validBranch = _getValidBranch( path.split("/") );
 		

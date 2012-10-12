@@ -5,14 +5,14 @@
  
 (function() {
 	
-	// DEFAULT TRANSITION IN/OUT METHOD DECLRATIONS
+	// CUSTOM DEFAULT TRANSITION IN/OUT METHOD DECLRATIONS
 	function defaultTransitionIn(callback, content) {
 		content.css("opacity", 0);
-		content.animate({"opacity":1}, 780, null,callback );
+		content.stop().animate({opacity:1}, {duration:600}).promise().done(callback);
 		
 	}
 	function defaultTransitionOut(callback, content) {
-		content.animate({"opacity":0}, 780, null,callback );
+		content.stop().animate({opacity:0}, {duration:600}).promise().done(callback);
 	
 	}	
 	Gaiajax.api.setDefaultTransitionIn(defaultTransitionIn);

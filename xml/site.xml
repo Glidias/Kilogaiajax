@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <site title="Kilogaiajax Example Site: %PAGE%">
-	<page id="index" src="index.html">
+	<page>
 		<asset src="css/main.css"></asset>
 		<asset src="js/main.js"></asset>
 		<page id="home" src="index.html" title="Home">
 			<asset src="js/pages/home.js"></asset>
-			<asset src="css/home.css"></asset>
+			<asset src="css/home.css"></asset>	
 		</page>
 		<page id="about" src="about.html" title="About Us">
 			<asset src="js/pages/about.js"></asset>
