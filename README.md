@@ -4,7 +4,7 @@ Kilogaiajax
 Kilogaiajax - Page/asset preloading framework for full AJAX-based SEO-friendly HTML sites
 (requires JQuery [ http://www.jquery.com ], History.js [ http://github.com/balupton/History.js/ ] ) and/or SWFAddress [ http://www.asual.com/swfaddress/ ] for HTML 4 brower version fallbacks. Also requires PHP (version 5) and a host server.
 	
-A lame attempt at creating a similar Gaia-Flash Framework style (http://www.gaiaframework.com)  ajax/php/html site. 
+A lame attempt at creating a similar Gaia-Flash Framework style [ http://www.gaiaflashframework.com ]  ajax/php/html site. 
 	
 The premise? Declare your hierachical site structure in a site.xml (it's pages and it's page-specific assets such as CSS, scripts, images, etc. to preload). With the site.xml converted to JSON via PHP,  javascript can easily read it to create a full site structure. Page content is than dynamically loaded in under a html template.
 
