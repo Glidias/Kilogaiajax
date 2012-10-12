@@ -1,0 +1,42 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title>Kilogaiajax</title>
+	<meta name="language" content="en" />
+	<meta name="description" content="" />
+	<meta name="keywords" content="" />
+	<script src="js/libs/jquery-1.6.2.min.js"></script>
+	<script src="js/libs/history.js"></script>
+	<script src="js/site.js"></script>
+	<script type="text/javascript">
+		// -- OPTIONALS 
+		
+		/* Declare global variable to load site json output */
+		//gaiaSiteJson = "json/site.json";  // "scripts/site.php" <- default location php which outputs "xml/site.xml" to json format.
+		
+		/* Please specify the absolute base url of your site if there are html page sources that exist in a seperate folder location. */
+		//Gaiajax.api.setRootURL("http://localhost/Kilogaiajax/bin/");
+	</script>
+</head>
+<body>
+	<div><!-- wrapper div -->
+		<div>
+			You are accessing stuff from index.html template. Below is the nav that is found in the template:
+			<br/>
+			<a class="gaiaHrefLink" href="about.html">About</a>
+			<a class="gaiaHrefLink" href="testpage.html">TestPage</a>
+			<a class="gaiaHrefLink" href="rawcontent.html">Raw content</a>
+		</div>
+		
+		<!-- Caveat at the moment: For some strange reason, contentWrapper must exist in an existing root div (not body tag) in order to be "discovered" by Jquery. -->
+		<!-- All page-specific content exists in contentWrapper, and will be emptied upon transitioned out -->
+		<div id="contentWrapper" style="background-color:#cccccc">
+			<div id="home">  
+				HOME
+			</div>
+		</div>
+	</div>
+</body>
+</html>

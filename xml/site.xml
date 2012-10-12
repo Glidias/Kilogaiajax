@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<site title="Kilogaiajax Example Site: %PAGE%">
+	<page id="index" src="index.html">
+		<asset src="css/main.css"></asset>
+		<asset src="js/main.js"></asset>
+		<page id="home" src="index.html" title="Home">
+			<asset src="js/pages/home.js"></asset>
+			<asset src="css/home.css"></asset>
+		</page>
+		<page id="about" src="about.html" title="About Us">
+			<asset src="js/pages/about.js"></asset>
+			<asset src="css/about.css"></asset>
+		</page>
+		<page id="testpage" src="testpage.html" title="TestPage" />
+		<page id="rawcontent" src="rawcontent.html" title="Raw content test" />
+	</page>
+</site>
