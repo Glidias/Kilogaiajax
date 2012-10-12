@@ -1,7 +1,7 @@
 Kilogaiajax
 ===========
 
-Kilogaiajax - Page/asset loading framework for full AJAX-based HTML sites
+Kilogaiajax - Page/asset loading framework for full AJAX-based SEO-friendly HTML sites
 (requires JQuery [ http://www.jquery.com ] and History.js [ http://github.com/balupton/History.js/ ] ). Also requires PHP (version 5) and a host server.
 
 
