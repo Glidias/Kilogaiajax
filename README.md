@@ -21,4 +21,6 @@ For public api methods, refer to "this.api = ...." line in site.js for available
 There's a lot of stuff not documented at the moment for the api, with varying use cases depending on whether your server supports Apache and Mod-rewrite.  More info coming up soon.
 
 Errata:
+-----------
+	
 [1*] Currently, the IE fallback option for History.js doesn't seem too suitable for Kilogaiajax, which used SWFAddress previously, just like in Gaia Flash Framework. For HTML 4/Non-History-API browers such as IE, I intend to keep SWFAddress as the fallback option, including an option to not use History api at all (ie. sticking to legacy SWFAddress) even for HTML5 browers.
