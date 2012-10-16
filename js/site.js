@@ -1051,8 +1051,9 @@ Gaiajax.api = (function(root) {
 		var filename =  _getSrcURL(url);
 		if (html4 && _pageHash[filename] && filename != landingPage.src) {
 			root["gaiaRedirect"] = _pageHash[filename].path;  // TODO: include any necessary deeplinks into path
+			
 		}
-		
+
 
 		if (html4 && root["gaiaRedirect"]) {  // TODO: include any necessary deeplinks into path
 			var docLoc = document.location.toString();
@@ -1060,11 +1061,12 @@ Gaiajax.api = (function(root) {
 			docLoc = docIndex != -1 ? docLoc.slice(docIndex+1) : null;
 			var tryRedirect =api.getValidBranch( root["gaiaRedirect"] );
 			if (_pathHash[tryRedirect]) { //pageList["@attributes"].src+
-				document.location = ".#/"+tryRedirect + (docLoc ? "/"+docLoc : "");
+			
+				document.location = ".#/"+tryRedirect + (docLoc ? docLoc.charAt(0) != "/" ? "/" + docLoc : docLoc   : "");
 				return;
 			}
 			else {
-				document.location = ".#/"+landingPage.path  + (docLoc ? "/"+docLoc : "");	
+				document.location = ".#/"+landingPage.path  + (docLoc ? docLoc.charAt(0) != "/" ? "/" + docLoc : docLoc   : "");	
 				return;
 			}
 		}
