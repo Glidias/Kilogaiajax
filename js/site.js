@@ -333,7 +333,10 @@ Gaiajax.api = (function(root) {
 			return curPageObj ? curPageObj.path : "";
 		}
 		,"setDeeplink": function(path) {
-			if (!html4) SWFAddress.setValue(path);
+			if (!html4) {
+				SWFAddress.setValue(""+path);			
+				return;
+			}
 			setSWFAddressValue( (curPageObj ? curPageObj.path : "") + "/" +  path);
 		}
 		,"setValue": function(path) {
@@ -1162,12 +1165,13 @@ Gaiajax.api = (function(root) {
 			}
 			return;
 		}
+			
 		//*/
 		//if (_pathHash[value] == undefined) alert("SORRY");
 		var validBranch = _getValidBranch( value.split("/") );
 		var hashAppend = value.slice(validBranch.length);
 		(replaceState ? History.replaceState : History.pushState)(null, null, _pathHash[validBranch].src + (hashAppend != "/" && hashAppend ? "#"+hashAppend : "" )  );
-		
+	
 		
 	
 	}
@@ -1220,6 +1224,7 @@ Gaiajax.api = (function(root) {
 			_fakeURLState = { url:src };
 			loadPageK(_pageHash[src]);  // ensure page synchronisation occurs even as a result of hash changes
 		}
+		_onDeeplink.dispatch( SWFAddress.getValue() );
 	}
 
 	
