@@ -118,7 +118,7 @@ Gaiajax.api = (function(root) {
 	
 	
 	var contentWrapperQ = "#contentWrapper";
-
+	var _fakeURLState = null;
 	var birthTime = new Date().getTime();
 	var rootURL = null;
 	
@@ -142,6 +142,8 @@ Gaiajax.api = (function(root) {
 	var _siteAssets = {};
 	var _domCacheHash = {};
 	var landingPage;
+	
+	var _routing = false;
 	
 	var _preloadJS;
 	
@@ -216,6 +218,12 @@ Gaiajax.api = (function(root) {
 		return path;
 	}
 	
+	function _getSrcURL(url) {
+		url = url.split("#")[0];
+		url =  rootURL ? url.replace(rootURL, "") : url.split("/").pop();
+		return url != "" ? url : landingPage.src;
+	}
+	
 	function _getValidBranches(branchArr) {
 		var arr = [];
 		var len = branchArr.length;
@@ -252,6 +260,9 @@ Gaiajax.api = (function(root) {
 	this.api = {
 		"setRootURL": function(value) {
 			rootURL = value;
+		}
+		,"setRouting": function(value) {
+			_routing = value;
 		}
 		,"enforceHTML4": function() {
 			html4 = true;
@@ -322,18 +333,17 @@ Gaiajax.api = (function(root) {
 			return curPageObj ? curPageObj.path : "";
 		}
 		,"setDeeplink": function(path) {
+			if (!html4) SWFAddress.setValue(path);
 			setSWFAddressValue( (curPageObj ? curPageObj.path : "") + "/" +  path);
 		}
 		,"setValue": function(path) {
-			setSWFAddressValue( path);
+			setSWFAddressValue(path);
 		}
 		,"getDeeplink": function() {
-			var urler = html4 ? SWFAddress.getValue().slice(1) : rootURL ? History.getState().url.replace(rootURL, "") : History.getState().url.split("/").pop(); 
-			var path =  html4 ? urler : _pageHash[urler] ?  _pageHash[urler].path : urler;  // todo: check if urler  reversion is okay or need explicit declartion (for mod-rewrite case)
+			if (!html4) return validDL( History.getHash() );  // should we enforce validDL as per strict SWFAddress mode?
+			var path = SWFAddress.getValue().slice(1);
 			var validBranch = _getValidBranch( path.split("/") );
-			validBranch = path.slice(validBranch.length);  // the deeplink result
-			if (!validBranch &&  !html4) return SWFAddress.getValue(); 
-			return validDL( validBranch );
+			return validDL( path.slice(validBranch.length) );
 		}
 		,"getTargetPage": function() {
 			return targetPageObj;
@@ -360,7 +370,7 @@ Gaiajax.api = (function(root) {
 			return currentContent;
 		}
 		,"getPreloadJS": function() { return _preloadJS; }
-		,"getValue": function() { if (html4) return SWFAddress.getValue(); var urler = rootURL ? History.getState().url.replace(rootURL, "") : History.getState().url.split("/").pop(); return "/"+(_pageHash[urler] ?  _pageHash[urler].path : ""); } //SWFAddress.getValue  // temp pop
+		,"getValue": function() { if (html4) return SWFAddress.getValue(); var dlAdd = History.getHash(); dlAdd = dlAdd === "/" ? "" : dlAdd; var state = _fakeURLState || History.getState(); var urler = _getSrcURL(state.url); return "/"+(_pageHash[urler] ?  _pageHash[urler].path : "") + dlAdd; } //SWFAddress.getValue  // temp pop
 		,"getTitle": function() { return window.document.title; } 
 		,"onDeeplink": _onDeeplink
 		,"onBeforeGoto": _onBeforeGoto
@@ -409,8 +419,6 @@ Gaiajax.api = (function(root) {
 		href = hrefHashIndex >=0 ? srcHref.slice(0, hrefHashIndex) : srcHref;
 		var hashValue = hrefHashIndex >= 0 ?  srcHref.slice(hrefHashIndex+1) : null;
 		
-		
-	
 		
 		var rel = hashValue;
 		
@@ -1035,9 +1043,15 @@ Gaiajax.api = (function(root) {
 	
 		collectPages( pageList );
 		
+		// From HTML5 link to HTML4 cases
+		var url = window.location.href;  
+		var filename =  _getSrcURL(url);
+		if (html4 && _pageHash[filename] && filename != landingPage.src) {
+			root["gaiaRedirect"] = _pageHash[filename].path;  // TODO: include any necessary deeplinks into path
+		}
 		
 
-		if (root["gaiaRedirect"]) {
+		if (html4 && root["gaiaRedirect"]) {  // TODO: include any necessary deeplinks into path
 			var docLoc = document.location.toString();
 			var docIndex = docLoc.indexOf("#");
 			docLoc = docIndex != -1 ? docLoc.slice(docIndex+1) : null;
@@ -1051,9 +1065,21 @@ Gaiajax.api = (function(root) {
 				return;
 			}
 		}
-		//alert(  History.getState().url.split("/").pop() );
-		//var tryPath = api.getValidBranch( SWFAddress.getValue().slice(1) );  //// tem pop
-		_startPage = html4 ?  _pathHash[api.getValidBranch( SWFAddress.getValue().slice(1) )] : _pageHash[rootURL ? History.getState().url.replace(rootURL, "") : History.getState().url.split("/").pop()];
+
+			var gotValidStartBranch = false;
+		// Determine if link is an html4 link.. ie. is it from index page src? If so, determine _startPage from hash.
+		if ( _pageHash[filename] === landingPage) {  // link is html4 style
+			_startPage =  _pathHash[ api.getValidBranch( SWFAddress.getValue().slice(1) )];
+			gotValidStartBranch= _startPage !=undefined;
+			if (!gotValidStartBranch) {
+				if  ( !html4) _startPage = _pageHash[_getSrcURL(History.getState().url)]
+				else _startPage = landingPage; 
+			}
+		}
+		else {  // link is html5 style, assuming it wasn't redirected above by html4
+			if (html4) alert("Failed to catch redirect for html4!");
+			_startPage = _pageHash[filename];
+		}
 
 		
 		var readyCall = (function() {	
@@ -1061,7 +1087,8 @@ Gaiajax.api = (function(root) {
 			//SWFAddress.addEventListener(SWFAddressEvent.CHANGE, handleChange);
 			if (!html4) {
 				History.Adapter.bind(window,'statechange', handleChange);
-				SWFAddress.addEventListener(SWFAddressEvent.CHANGE, hashChange);
+				//History.Adapter.bind(window,'hashchange', hashChange); // doesnt't work, dunno why
+				SWFAddress.addEventListener(SWFAddressEvent.CHANGE, hashChange);  
 			}
 			else {
 				SWFAddress.addEventListener(SWFAddressEvent.CHANGE, handleChange);
@@ -1075,6 +1102,7 @@ Gaiajax.api = (function(root) {
 			registerAssetList(_stackAssets, true);
 			if (_startPage) {
 				gotoPageURL( _startPage.src);
+				if (!html4 && gotValidStartBranch) setSWFAddressValue(SWFAddress.getValue().slice(1), true);
 				return;
 			}
 			else setSWFAddressValue(landingPage.path);
@@ -1121,7 +1149,9 @@ Gaiajax.api = (function(root) {
 		preloadJS.loadManifest(manifest);
 	}
 	
-	function setSWFAddressValue(value) {
+	
+	
+	function setSWFAddressValue(value, replaceState) {
 		///*
 		if (html4) {
 			try {
@@ -1134,9 +1164,12 @@ Gaiajax.api = (function(root) {
 		}
 		//*/
 		//if (_pathHash[value] == undefined) alert("SORRY");
-
-		History.pushState(null, null, _pathHash[value].src);
+		var validBranch = _getValidBranch( value.split("/") );
+		var hashAppend = value.slice(validBranch.length);
+		(replaceState ? History.replaceState : History.pushState)(null, null, _pathHash[validBranch].src + (hashAppend != "/" && hashAppend ? "#"+hashAppend : "" )  );
 		
+		
+	
 	}
 	
 	function onDocumentReady() {
@@ -1181,12 +1214,18 @@ Gaiajax.api = (function(root) {
 	
 	
 	function hashChange() {  // html5 hash change with SWFAddress
-		_onDeeplink.dispatch( api.getDeeplink() );
+		var src = _getSrcURL(window.location.href);  
+		
+		if (src != curPageObj.src) {
+			_fakeURLState = { url:src };
+			loadPageK(_pageHash[src]);  // ensure page synchronisation occurs even as a result of hash changes
+		}
 	}
 
 	
 	function handleChange(e) {
 	
+			
 		// something in prev project for depeciating
 		//if (hrefRelId == null && _isIn && currentContent!=null) currentContent.trigger(e.type, e);
 		//hrefRelId = null;
@@ -1194,29 +1233,25 @@ Gaiajax.api = (function(root) {
 		//if (e.cancelled) {  // some flag to cancel default behaviour in previous project..hmm.
 		//	return;
 		//}
-		
 
 		var fullValue = api.getValue();
 	
 		var path = fullValue.slice(1);
 		// TODO: remove trailing slashes for path??
-	
+		_fakeURLState = null;
 		
 		var validBranch = _getValidBranch( path.split("/") );
 		
 		if ( validBranch  ) {  
+			
+			if (html4) _onDeeplink.dispatch( validDL( path.slice(validBranch.length) ) );
 			loadPageK( _pathHash[validBranch]  );
-			//if (validBranch == path) return;
-			// else got deeplink
-		//	alert(validDL( path.slice(validBranch.length) ));
-			_onDeeplink.dispatch( validDL( path.slice(validBranch.length) ) );
 		}
-		else {
+		else {  // always revert to landing page if invalid page found. (TODO: technically, could include 404 page as well)
+			
+			if (html4) _onDeeplink.dispatch( validDL(fullValue) );
 			loadPageK( landingPage.path  );
-			_onDeeplink.dispatch( validDL(fullValue) );
 		}
-		
-	
 		
 	}
 	

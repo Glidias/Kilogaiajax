@@ -2,7 +2,7 @@ Kilogaiajax
 ===========
 
 Kilogaiajax - Page/asset preloading framework for full AJAX-based SEO-friendly HTML sites
-(requires JQuery [ http://www.jquery.com ], History.js [ http://github.com/balupton/History.js/ ] ) and/or SWFAddress [ http://www.asual.com/swfaddress/ ] for HTML 4 brower version fallbacks. Also requires PHP (version 5) and a host server.
+(uses JQuery [ http://www.jquery.com ], SWFAddress [ http://www.asual.com/swfaddress/ ] (as a HTML4 fallback and general speedy hashing) and for HTML5-enabled browers: History.js [ http://github.com/balupton/History.js/ ]. Also requires PHP (version 5) and a host server.
 	
 A lame attempt at creating a similar Gaia-Flash Framework style [ http://www.gaiaflashframework.com ]  ajax/php/html site. 
 	
