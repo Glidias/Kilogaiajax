@@ -427,7 +427,7 @@ Gaiajax.api = (function(root) {
 		
 		var pageDoc =  _pageHash[href];
 		if (pageDoc) {
-			setSWFAddressValue(pageDoc.path + (rel ? "/"+rel : "") );
+			setSWFAddressValue(pageDoc.path + (rel ? rel.charAt(0) != "/" ? "/"+rel : rel : "") );
 			return false;
 		}
 		else { // go defualt link?
@@ -1154,7 +1154,7 @@ Gaiajax.api = (function(root) {
 		preloadJS.loadManifest(manifest);
 	}
 	
-	
+	var SUID = 0;  // unique incrementing id to ensure each state is unique, even with the same url
 	
 	function setSWFAddressValue(value, replaceState) {
 		///*
@@ -1167,15 +1167,16 @@ Gaiajax.api = (function(root) {
 			}
 			return;
 		}
+		
 			
 		//*/
 		//if (_pathHash[value] == undefined) alert("SORRY");
 		var validBranch = _getValidBranch( value.split("/") );
 		var hashAppend = value.slice(validBranch.length);
-		(replaceState ? History.replaceState : History.pushState)(null, null, _pathHash[validBranch].src + (hashAppend != "/" && hashAppend ? "#"+hashAppend : "" )  );
-	
+		(replaceState ? History.replaceState : History.pushState)({id:SUID++}, null, _pathHash[validBranch].src + (hashAppend != "/" && hashAppend ? "#"+hashAppend : "" )  );
+		//GaiaDebug.log("Pushing state:"+replaceState + ", "+validBranch + ", " +_pathHash[validBranch].src + (hashAppend != "/" && hashAppend ? "#"+hashAppend : "" ) );
 		
-	
+		//GaiaDebug.log("change");
 	}
 	
 	function onDocumentReady() {
@@ -1222,17 +1223,16 @@ Gaiajax.api = (function(root) {
 	function hashChange() {  // html5 hash change with SWFAddress
 		var src = _getSrcURL(window.location.href);  
 		
-		if (src != curPageObj.src) {
+		if (src != (targetPageObj || curPageObj).src) {
 			_fakeURLState = { url:src };
 			loadPageK(_pageHash[src]);  // ensure page synchronisation occurs even as a result of hash changes
 		}
-		_onDeeplink.dispatch( SWFAddress.getValue() );
+		else _onDeeplink.dispatch( SWFAddress.getValue() );
 	}
 
 	
 	function handleChange(e) {
-	
-			
+
 		// something in prev project for depeciating
 		//if (hrefRelId == null && _isIn && currentContent!=null) currentContent.trigger(e.type, e);
 		//hrefRelId = null;
@@ -1241,23 +1241,27 @@ Gaiajax.api = (function(root) {
 		//	return;
 		//}
 
+		_fakeURLState = null; // flush away any temporary fake url state
+		
 		var fullValue = api.getValue();
 	
 		var path = fullValue.slice(1);
 		// TODO: remove trailing slashes for path??
-		_fakeURLState = null;
+		
 		
 		var validBranch = _getValidBranch( path.split("/") );
-		
+		//GaiaDebug.log("A:"+validBranch);
 		if ( validBranch  ) {  
-			
-			if (html4) _onDeeplink.dispatch( validDL( path.slice(validBranch.length) ) );
 			loadPageK( _pathHash[validBranch]  );
+			if (html4) _onDeeplink.dispatch( validDL( path.slice(validBranch.length) ) )
+			else _onDeeplink.dispatch( SWFAddress.getValue() );
 		}
 		else {  // always revert to landing page if invalid page found. (TODO: technically, could include 404 page as well)
 			
-			if (html4) _onDeeplink.dispatch( validDL(fullValue) );
+			
 			loadPageK( landingPage.path  );
+			if (html4) _onDeeplink.dispatch( validDL(fullValue) );
+			else _onDeeplink.dispatch( SWFAddress.getValue() );
 		}
 		
 	}
