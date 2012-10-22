@@ -116,6 +116,7 @@ Gaiajax.api = (function(root) {
 		return true;
 	};
 	
+	//SWFAddress.fragId = "!";
 	
 	var contentWrapperQ = "#contentWrapper";
 	var _fakeURLState = null;
@@ -131,6 +132,7 @@ Gaiajax.api = (function(root) {
 	var _ajaxHash = {};
 	
 	var _gaiaLinkHash = {};
+	var _gaTracker;
 	
 	var _head;
 	
@@ -170,6 +172,7 @@ Gaiajax.api = (function(root) {
 	
 	var _loading = false;
 	var _siteTitle;
+	var _siteNode;
 	var _defaultTransitionOutMethod = function(callback, currentContent) {
 		currentContent.stop().animate({opacity:0}, {duration:600}).promise().done(callback);
 	};
@@ -356,6 +359,9 @@ Gaiajax.api = (function(root) {
 		}
 		,"getSiteAsset": function(id) {
 			return _siteAssets[id];
+		}
+		,"getSiteNode": function() {
+			return _siteNode;
 		}
 		,"setGaiaTransitionOut": function(val) {
 			root["gaiaTransitionOut"] = val;
@@ -685,6 +691,13 @@ Gaiajax.api = (function(root) {
 	}
 	
 	function transitionInContent() {
+		
+		if (_gaTracker) {
+			_gaTracker = root["_gaq"] || (root["_gaq"]=[]);
+			_gaTracker.push( ['_trackPageview', "/"+(_routing ? curPageObj.path : curPageObj.src)] );
+			
+		}
+		
 	//	GaiaDebug.log("TRANSITION IN");
 		_pageTransiting = true;
 		_lockTransit = _lockTransit |= 1;
@@ -1028,6 +1041,21 @@ Gaiajax.api = (function(root) {
 		var pageList = data.site;
 		var defaultTitle = "Kilogaiajax Untitled Site: %PAGE%";
 		_siteTitle = data.site["@attributes"] ? data.site["@attributes"].title || defaultTitle : defaultTitle;
+		_siteNode = data.site;
+		var gaAccount = data.site["@attributes"].gaAccount || null;
+		if (gaAccount) {
+			_gaTracker = root["_gaq"] || (root["_gaq"]=[]);
+			_gaTracker.push(['_setAccount', gaAccount]); // your ID/profile  
+		//		_gaTracker.push(['_setDomainName', 'none']);
+
+			(function() {  
+				var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;  
+				ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';  
+				var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);  
+			})();
+		}
+		
+		
 		if (!pageList) {
 			throwError("No site node found!");
 			return;
@@ -1045,6 +1073,9 @@ Gaiajax.api = (function(root) {
 		
 	
 		collectPages( pageList );
+		
+
+
 		
 		// From HTML5 link to HTML4 cases
 		var url = window.location.href;  
@@ -1070,7 +1101,7 @@ Gaiajax.api = (function(root) {
 				return;
 			}
 		}
-
+		
 			var gotValidStartBranch = false;
 		// Determine if link is an html4 link.. ie. is it from index page src? If so, determine _startPage from hash.
 		if ( _pageHash[filename] === landingPage) {  // link is html4 style
@@ -1084,6 +1115,17 @@ Gaiajax.api = (function(root) {
 		else {  // link is html5 style, assuming it wasn't redirected above by html4
 			if (html4) alert("Failed to catch redirect for html4!");
 			_startPage = _pageHash[filename];
+		}
+		
+				if (root["MobileRedirect"]) {  // app-specific
+				
+				if (_startPage == null) _startPage = landingPage;
+				
+				var deeplink = api.getDeeplink();
+	
+				deeplink =  deeplink!= "/" ? "#"+deeplink : "";
+				
+				window.location.href = "mobile/" + _startPage.src + deeplink;
 		}
 
 		
