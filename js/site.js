@@ -111,6 +111,7 @@ var Gaiajax = {};
 Gaiajax.api = (function(root) {
 	
 	var html4 = History.emulated.pushState;
+	var _lastValue = null;
 	
 	History.isTraditionalAnchor = function(url_or_hash) {  
 		return true;
@@ -1210,7 +1211,7 @@ Gaiajax.api = (function(root) {
 			return;
 		}
 		
-			
+		if (_lastValue === value) return;
 		//*/
 		//if (_pathHash[value] == undefined) alert("SORRY");
 		var validBranch = _getValidBranch( value.split("/") );
@@ -1288,6 +1289,7 @@ Gaiajax.api = (function(root) {
 		var fullValue = api.getValue();
 	
 		var path = fullValue.slice(1);
+		_lastValue = path;
 		// TODO: remove trailing slashes for path??
 		
 		
