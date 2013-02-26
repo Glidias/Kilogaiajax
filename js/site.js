@@ -636,10 +636,13 @@ Gaiajax.api = (function(root) {
 				currentContent = elem;
 			}
 			else {   // got html doc type
-				currentContent = elem.find(contentWrapperQ);
-			
+				
+				currentContent = elem.siblings(contentWrapperQ);
 				currentContent = currentContent.children();
-
+				if (currentContent.length == 0 ) {
+					currentContent = elem.find(contentWrapperQ);
+					currentContent = currentContent.children();
+				}
 				if (currentContent.length == 0 ) {
 					GaiaDebug.log("Failed to retrieve contentWrapper:"+e);
 					currentContent = $("<div id='contentWrapperFailed'>Content retrieved from contentWrapper failed</div>");
