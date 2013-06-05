@@ -327,7 +327,7 @@ Gaiajax.api = (function(root) {
 		var parentPath = assetPath;
 		assetPath = _pathHash[assetPath];
 		assets = assetPath != null ? assetPath.pageAssets : null;
-			
+		
 		var dPageData = { "@attributes":{id:id, title:title, id:id, src:url} };
 		var kv =new KeyValue(url, assets, title, id, dPageData, path );
 		
@@ -723,10 +723,18 @@ Gaiajax.api = (function(root) {
 	
 	function loadContent() {
 		_lockTransit |= 1;
-	//	if (_loading) alert("INTerupt load!");
+		var i;
+		if (_loading) {
+			_pageAssets = {};
+			for (i in _assetHash) {
+				deleteAsset(i);
+				
+			}
+			//alert("INTerupt load!");
+		}
 		_timestamp++;
 	
-		var i;
+		
 		for (i in _ajaxHash) {
 			_ajaxHash[i].abort();
 		}
@@ -825,7 +833,7 @@ Gaiajax.api = (function(root) {
 			_gaTracker.push( ['_trackPageview', "/"+(_routing ? curPageObj.path : curPageObj.src)] );
 			
 		}
-		
+	
 	//	GaiaDebug.log("TRANSITION IN");
 		_pageTransiting = true;
 		_lockTransit = _lockTransit |= 1;
@@ -860,13 +868,13 @@ Gaiajax.api = (function(root) {
 	}
 	
 	function transitionInComplete() {
+
 	//	GaiaDebug.log("TRANSITION IN COMPLETE");
 		_pageTransiting = false;
 		if (_isInterrupted) {
 		//	log("Complete interrupt:"+targetPage);
 		_isInterrupted = false;
 			var result = gotoPageURL(targetPage, true);
-			
 			return;
 		}
 		if (root["gaiaTransitionInComplete"]) root["gaiaTransitionInComplete"](currentContent);
@@ -902,6 +910,7 @@ Gaiajax.api = (function(root) {
 		}
 		 
 		var i;
+		
 		for (i in _assetHash) {
 			deleteAsset(i);
 		}
@@ -1064,17 +1073,19 @@ Gaiajax.api = (function(root) {
 		var req;
 		var node;
 		var useAssetHash;
-		
 		if (ext == "css") {
 		
 			if (!dontHash) _assetHash[src] = asset;
 			var mediaAttrib =  attrib.media;
 			mediaAttrib = mediaAttrib ? ' media="'+mediaAttrib+'"' : "";
-				if (document.createStyleSheet) {
+			if (document.createStyleSheet) {
 				document.createStyleSheet(src);
+				
 			}
 			else {
 				node = $('<link rel="stylesheet"'+mediaAttrib+' type="text/css" href="'+src+'"></link>');
+				
+				
 				_head.append( node );	
 			}
 			
@@ -1107,7 +1118,7 @@ Gaiajax.api = (function(root) {
 			
 			
 		}
-		
+	
 	}
 	
 	function delayPoploadCount() {
