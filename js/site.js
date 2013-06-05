@@ -148,6 +148,7 @@ Gaiajax.api = (function(root) {
 		
 	}
 	
+	if (SWFAddress["fragId"] == null) SWFAddress["fragId"] = "";
 	//SWFAddress.fragId = "!";
 	
 	var contentWrapperQ = "#contentWrapper";
