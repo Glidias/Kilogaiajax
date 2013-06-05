@@ -86,16 +86,22 @@ function GaiaSignal() {
 		var len = _subscribers.length;
 		if (len == 0) return;
 		dispatching = true;
+		var i;
 		if (arguments.length) {
+			
 			for (i=0; i< len; i++) {
-				_subscribers[i].apply(null, arguments);
+			
+				_subscribers[i].apply(null, arguments); //	alert("A:"+_subscribers[i] + ", "+arguments);
+				
 			}
 		}
 		else {
+			
 			for (i=0; i< len; i++) {
 				_subscribers[i]();
 			}
 		}
+		
 		dispatching = false;
 		if (_indiceCache.length) cleanup();
 	}
@@ -117,12 +123,38 @@ Gaiajax.api = (function(root) {
 		return true;
 	};
 	
+	if (!root["SWFAddress"]) {  // Use jquery address if SWFAddress not found!
+		
+		root["SWFAddressEvent"] = {
+			"CHANGE" : "change"
+		};
+		
+		root["SWFAddress"] = new (function($) {
+			this.fragId = "";
+			this.getValue= function() {
+				var v = $.address.value();
+				v = v.charAt(0) != this.fragId ? v : v.slice(1);
+				return v;
+			}
+			this.setValue =  function(val) {
+				$.address.value(val);
+			}
+			this.addEventListener = function(val, method) {
+				if (val === SWFAddressEvent.CHANGE) {
+					$.address.change(method);
+				}
+			}
+		})(jQuery);
+		
+	}
+	
 	//SWFAddress.fragId = "!";
 	
 	var contentWrapperQ = "#contentWrapper";
 	var _fakeURLState = null;
 	var birthTime = new Date().getTime();
-	var rootURL = null;
+	var rootURL = "";
+
 	
 	// temporary stacks for collecting stuff
 	var _stackAssets = [];
@@ -193,6 +225,8 @@ Gaiajax.api = (function(root) {
 	var _onAfterTransitionOut = new GaiaSignal();
 	var _onAfterComplete = new GaiaSignal();
 	var _onBeforeReady = new GaiaSignal();
+	var _onSiteXMLReady = new GaiaSignal();
+	var _onChange = new GaiaSignal();
 	
 	var _onPreloadSiteProgress = new GaiaSignal();
 	
@@ -222,10 +256,29 @@ Gaiajax.api = (function(root) {
 		return path;
 	}
 	
+	function _getValidBranchNode(branchArr) {
+		var len = branchArr.length;
+		var i;
+		var curParent = _rootNode;
+		var testNode;
+		var prop;
+		for (i=0; i< len; i++) {
+			prop = branchArr[i];
+			testNode = curParent[prop];
+			if (testNode) { 
+				curParent = testNode;
+			}
+			else break;
+		}
+		return curParent;
+	}
+	
 	function _getSrcURL(url) {
+
 		url = url.split("#")[0];
 		url =  rootURL ? url.replace(rootURL, "") : url.split("/").pop();
-		return url != "" ? url : landingPage.src;
+		url =  url != "" ? url : landingPage ? landingPage.src : "";
+		return url;
 	}
 	
 	function _getValidBranches(branchArr) {
@@ -259,9 +312,47 @@ Gaiajax.api = (function(root) {
 	function getNewId() {
 		return (_idGen++).toString();
 	}	
+	
+	
+	var onDemandPageURL;
+	var onDemandPath;
 
-
+	function addPage(url, path, id, assetPath, title) {
+		id = id != null ? id : "~ondemand";
+		title = title != null ? title :  (curPageObj ? curPageObj.title : "Untitled");
+		
+		var assets;
+		
+		var parentPath = assetPath;
+		assetPath = _pathHash[assetPath];
+		assets = assetPath != null ? assetPath.pageAssets : null;
+			
+		var dPageData = { "@attributes":{id:id, title:title, id:id, src:url} };
+		var kv =new KeyValue(url, assets, title, id, dPageData, path );
+		
+		_getValidBranchNode(parentPath.split("/"))[id] = {id:id};
+		
+		_pageHash[url] = kv;
+		_pathHash[path] = kv;
+	}
+	
 	this.api = {
+		"setOnDemandPage": function(url, path, id, assetPath, title) {  // set an on-demand page (on-the-fly) for viewing
+			
+			if (onDemandPageURL) { // delete previous entry to avoid bloating!
+			//	delete _pageHash[onDemandPageURL];  
+			}
+			if (onDemandPath) { // delete previous entry to avoid bloating!
+			//	delete _pageHash[onDemandPath];  
+			}
+			addPage(url, path, id, assetPath, title);
+			onDemandPageURL = url;
+			onDemandPath = path;
+		}
+		,"handleChange": function() {
+			handleChange();
+		}
+		,
 		"setRootURL": function(value) {
 			rootURL = value;
 		}
@@ -277,8 +368,11 @@ Gaiajax.api = (function(root) {
 		,"setTitle": function(newTitle) {
 			window.document.title = newTitle;
 		}
+		,"setPageTitle": function(newTitle) {
+			window.document.title =  _siteTitle.replace("%PAGE%", newTitle);
+		}
 		,"goto": function(path) {
-			setSWFAddressValue( "/" + path);
+			setSWFAddressValue( path);
 		}
 		,"setContentWrapper": function(jString) {
 			contentWrapperQ = jString;
@@ -338,9 +432,10 @@ Gaiajax.api = (function(root) {
 		}
 		,"setDeeplink": function(path) {
 			if (!html4) {
-				SWFAddress.setValue(""+path);			
+				SWFAddress.setValue(path);			
 				return;
 			}
+			if (path.charAt(0) === "/") path = path.slice(1);
 			setSWFAddressValue( (curPageObj ? curPageObj.path : "") + "/" +  path);
 		}
 		,"setValue": function(path) {
@@ -380,9 +475,12 @@ Gaiajax.api = (function(root) {
 			return currentContent;
 		}
 		,"getPreloadJS": function() { return _preloadJS; }
-		,"getValue": function() { if (html4) return SWFAddress.getValue(); var dlAdd = History.getHash(); dlAdd = dlAdd === "/" ? "" : dlAdd; var state = _fakeURLState || History.getState(); var urler = _getSrcURL(state.url); return "/"+(_pageHash[urler] ?  _pageHash[urler].path : "") + dlAdd; } //SWFAddress.getValue  // temp pop
+		,"getValue": function() { if (html4) return SWFAddress.getValue(); var dlAdd = History.getHash(); dlAdd = dlAdd === "/" ? "" : dlAdd; var state = _fakeURLState || History.getState(); var urler = _getSrcURL(state.url); return "/"+(_pageHash[urler] ?  _pageHash[urler].path :  urler.indexOf(".") < 0 ? urler : "") + dlAdd; } //SWFAddress.getValue  // temp pop
+		,"getURL5": function() { return _getSrcURL(History.getState().url); } //SWFAddress.getValue  // temp pop
 		,"getTitle": function() { return window.document.title; } 
 		,"onDeeplink": _onDeeplink
+		,"onSiteXMLReady": _onSiteXMLReady
+		,"onChange": _onChange
 		,"onBeforeGoto": _onBeforeGoto
 		,"onAfterGoto": _onAfterGoto
 		,"onBeforePreload": _onBeforePreload
@@ -408,18 +506,38 @@ Gaiajax.api = (function(root) {
 	function linkHandler(href, isPath) {
 		
 		var pageDoc = isPath ? _pathHash[href] :  _pageHash[href];
-		if (pageDoc) {
-			setSWFAddressValue((isPath ? href : pageDoc.path));
-			return false;
-		}
-		else { // go defualt link?
+		
+		//if (pageDoc) {
 			
-		}
+			setSWFAddressValue((isPath ? href : pageDoc.path));
+		//	return false;
+		//}
+		//else { // go defualt link?
+			
+		//}
 		return false;
 	}
 	function relLinkHandler(e) {
+		var value = $(e.currentTarget).attr("href");
+		if (html4) {
+			try {
+				SWFAddress.setValue(SWFAddress.fragId+"/"+value);
+			}
+			catch(e) {
+				window.location = "#"+value;
+			}
+			return false;
+		}
 		
-		return linkHandler($(e.currentTarget).attr("rel"), true);
+		if (_lastValue === value) return false;
+		
+
+		var validBranch = _getValidBranch( value.split("/") );
+		var hashAppend = value.slice(validBranch.length);
+		History.pushState({id:SUID++}, null, value  );
+		//GaiaDebug.log("Pushing state:"+replaceState + ", "+validBranch + ", " +_pathHash[validBranch].src + (hashAppend != "/" && hashAppend ? "#"+hashAppend : "" ) );
+		
+		return false;
 	}
 	function hrefLinkHandler(e) {
 		var elem = $(e.currentTarget);
@@ -428,17 +546,21 @@ Gaiajax.api = (function(root) {
 		var hrefHashIndex = srcHref.indexOf("#");
 		href = hrefHashIndex >=0 ? srcHref.slice(0, hrefHashIndex) : srcHref;
 		var hashValue = hrefHashIndex >= 0 ?  srcHref.slice(hrefHashIndex+1) : null;
-		
+	
 		
 		var rel = hashValue;
 		
 		var pageDoc =  _pageHash[href];
+		
+		
 		if (pageDoc) {
+		
 			setSWFAddressValue(pageDoc.path + (rel ? rel.charAt(0) != "/" ? "/"+rel : rel : "") );
+
 			return false;
 		}
 		else { // go defualt link?
-			
+		
 		}
 		return false;
 	}
@@ -535,7 +657,7 @@ Gaiajax.api = (function(root) {
 	ImageAsset.prototype.type = "image";
 		
 	
-	function KeyValue(src, pageAssets, title, id, json) {
+	function KeyValue(src, pageAssets, title, id, json, path) {
 		this.src = src;
 		this.title = title || "Untitled";
 		//this.assets = _stackAssets.concat();
@@ -545,15 +667,15 @@ Gaiajax.api = (function(root) {
 		collectAssets(this.pageAssets, pageAssets);
 		this.json = json;
 		
-		this.path = _stackIds.join("/");
+		this.path = path || _stackIds.join("/");
 	}
 	
 
 	
 	function gotoPageURL(url, underGaia) {
-		var pageDoc = _pageHash[url];
-	
 		
+		var pageDoc = _pageHash[url];
+
 		if (!pageDoc) return false;
 		if (!underGaia) _onBeforeGoto.dispatch(pageDoc);
 		
@@ -586,6 +708,7 @@ Gaiajax.api = (function(root) {
 		}
 		
 		if (currentContent != null) {
+		
 			transitionOutContent();
 			//if (!underGaia) _onAfterGoto.dispatch(pageDoc);
 			return true;
@@ -631,12 +754,12 @@ Gaiajax.api = (function(root) {
 		_ajaxReq = $.ajax(targetPage, { cache: true, data: {ajax:1,gaia:birthTime}  } )
 		.done(function(e) { 
 			
-			var elem = $(e);
+			var elem = $("<div>"+e+"</div>");
 			if (e.charAt(1) != "!") { 
-				currentContent = elem;
+				currentContent = elem.children();
 			}
 			else {   // got html doc type
-				
+				elem = elem.children();
 				currentContent = elem.siblings(contentWrapperQ);
 				currentContent = currentContent.children();
 				if (currentContent.length == 0 ) {
@@ -665,7 +788,7 @@ Gaiajax.api = (function(root) {
 		}
 		
 		if (loadCount < 0) {
-			alert("SHOULD NOT BE lower than zero load count! Did transitionOutComplete callback trigger multiple times?");
+			//alert("SHOULD NOT BE lower than zero load count! Did transitionOutComplete callback trigger multiple times?");
 		}
 	}
 	
@@ -687,7 +810,7 @@ Gaiajax.api = (function(root) {
 		contentWrapper.append(currentContent);
 
 		api.bindHrefLinks( _gaiaHrefLinks=currentContent.find("a.gaiaHrefLink"));
-		api.bindRelLinks( _gaiaRelLinks = currentContent.find(".gaiaRelLink"));
+		api.bindRelLinks( _gaiaRelLinks = currentContent.find("a.gaiaRelLink"));
 		//$(document).trigger("ready");
 		_onBeforeReady.dispatch();
 		if (root["gaiaReady"]) root.gaiaReady(currentContent);
@@ -795,6 +918,7 @@ Gaiajax.api = (function(root) {
 
 	}
 	function transitionOutContent() {
+	
 		_onBeforeTransitionOut.dispatch();
 		
 		//hrefHash3 = {};
@@ -803,10 +927,10 @@ Gaiajax.api = (function(root) {
 		
 		if (!root["gaiaTransitionOut"]) {
 			
-		if (_defaultTransitionOutMethod == null) {
-			currentContent.stop();
-			currentContent.animate({opacity:0},{duration:600}).promise().done( delayTransitionOutComplete );
-		}
+			if (_defaultTransitionOutMethod == null) {
+				currentContent.stop();
+				currentContent.animate({opacity:0},{duration:600}).promise().done( delayTransitionOutComplete );
+			}
 			else _defaultTransitionOutMethod(delayTransitionOutComplete, currentContent);
 		}
 		else {
@@ -846,6 +970,7 @@ Gaiajax.api = (function(root) {
 		//var count = pushAssets(pageData.asset);
 		var kv = new KeyValue(srcAttrib, pageData.asset, pageData["@attributes"].title, idAttrib, pageData);
 		if (landingPage == null) landingPage = kv;
+		
 		_pageHash[srcAttrib] = kv;
 		_pathHash[kv.path] = kv;
 
@@ -872,8 +997,9 @@ Gaiajax.api = (function(root) {
 		if (!assets) return;
 		var count = 0;
 		if (assets.hasOwnProperty("length")) {
-			var i = assets.length;
-			while(--i > -1) {
+			var i;
+			var len = assets.length;
+			for(i=0; i<len; i++) {
 				if (alwaysPush || isStackable(assets[i])) {
 					_stackAssets.push(getAsset(assets[i]));
 					count++;
@@ -892,8 +1018,9 @@ Gaiajax.api = (function(root) {
 	function collectAssets(collector, assets) {
 		if (!assets) return;
 		if (assets.hasOwnProperty("length")) {
-			var i = assets.length;
-			while(--i > -1) {
+			var i;
+			var len = assets.length;
+			for(i=0; i<len; i++) {
 				if (!isStackable(assets[i])) {
 					collector.push(getAsset(assets[i]));
 				}
@@ -922,7 +1049,7 @@ Gaiajax.api = (function(root) {
 	
 	function loadFailedDomHandler(e) {
 		currentContent = $("<div id='loadFailedHandler'>Page doc load failed</div>");
-		GaiaDebug.log("Load failed:"+(e.currentTarget ?   e.currentTarget.href || e.currentTarget.src : "undefined" ));
+		GaiaDebug.log("Load failed dom:"+(e.currentTarget ?   e.currentTarget.href || e.currentTarget.src : "not defined" ));
 		delayPoploadCount(e);
 	}
 	
@@ -1079,14 +1206,20 @@ Gaiajax.api = (function(root) {
 		collectPages( pageList );
 		
 
+		_onSiteXMLReady.dispatch();
 
 		
 		// From HTML5 link to HTML4 cases
 		var url = window.location.href;  
 		var filename =  _getSrcURL(url);
-		if (html4 && _pageHash[filename] && filename != landingPage.src) {
-			root["gaiaRedirect"] = _pageHash[filename].path;  // TODO: include any necessary deeplinks into path
-			
+		var detectPage = _pageHash[filename]; //filename.indexOf(".") >= 0 ? _pageHash[filename] : _pathHash[ api.getValidBranch(filename) ];
+		// need a detectURL link as well
+		
+		
+		var filename =  _getSrcURL(url);
+	
+		if (html4 && detectPage && filename != landingPage.src) {
+			root["gaiaRedirect"] = detectPage.path;  // TODO: include any necessary deeplinks into path
 		}
 
 
@@ -1097,28 +1230,29 @@ Gaiajax.api = (function(root) {
 			var tryRedirect =api.getValidBranch( root["gaiaRedirect"] );
 			if (_pathHash[tryRedirect]) { //pageList["@attributes"].src+
 			
-				document.location = ".#/"+tryRedirect + (docLoc ? docLoc.charAt(0) != "/" ? "/" + docLoc : docLoc   : "");
+				document.location = (rootURL ? rootURL : ".")+"#"+SWFAddress.fragId+"/"+tryRedirect + (docLoc ? docLoc.charAt(0) != "/" ? "/" + docLoc : docLoc   : "");
 				return;
 			}
 			else {
-				document.location = ".#/"+landingPage.path  + (docLoc ? docLoc.charAt(0) != "/" ? "/" + docLoc : docLoc   : "");	
+				document.location = (rootURL ? rootURL : ".")+"#"+SWFAddress.fragId+"/"+landingPage.path  + (docLoc ? docLoc.charAt(0) != "/" ? "/" + docLoc : docLoc   : "");	
 				return;
 			}
 		}
-		
+
 			var gotValidStartBranch = false;
 		// Determine if link is an html4 link.. ie. is it from index page src? If so, determine _startPage from hash.
-		if ( _pageHash[filename] === landingPage) {  // link is html4 style
+		if ( detectPage === landingPage) {  // link is html4 style
 			_startPage =  _pathHash[ api.getValidBranch( SWFAddress.getValue().slice(1) )];
 			gotValidStartBranch= _startPage !=undefined;
 			if (!gotValidStartBranch) {
+				
 				if  ( !html4) _startPage = _pageHash[_getSrcURL(History.getState().url)]
 				else _startPage = landingPage; 
 			}
 		}
 		else {  // link is html5 style, assuming it wasn't redirected above by html4
 			if (html4) alert("Failed to catch redirect for html4!");
-			_startPage = _pageHash[filename];
+			_startPage = detectPage;
 		}
 		
 				if (root["MobileRedirect"]) {  // app-specific
@@ -1138,7 +1272,7 @@ Gaiajax.api = (function(root) {
 			//SWFAddress.addEventListener(SWFAddressEvent.CHANGE, handleChange);
 			if (!html4) {
 				History.Adapter.bind(window,'statechange', handleChange);
-				//History.Adapter.bind(window,'hashchange', hashChange); // doesnt't work, dunno why
+				//History.Adapter.bind(window,'onanchorchange', hashChange); // doesnt't work, dunno why
 				SWFAddress.addEventListener(SWFAddressEvent.CHANGE, hashChange);  
 			}
 			else {
@@ -1147,12 +1281,13 @@ Gaiajax.api = (function(root) {
 			//History.Adapter.bind(window,'onanchorchange', hashChange);
 		
 			api.bindHrefLinks( $("body a.gaiaHrefLink") );
-			api.bindRelLinks( $("body .gaiaRelLink") );
+			api.bindRelLinks( $("body a.gaiaRelLink") );
 		
 		$(document).trigger("gaiaReady");
 			registerAssetList(_stackAssets, true);
 			if (_startPage) {
 				gotoPageURL( _startPage.src);
+			
 				if (!html4 && gotValidStartBranch) setSWFAddressValue(SWFAddress.getValue().slice(1), true);
 				return;
 			}
@@ -1204,24 +1339,27 @@ Gaiajax.api = (function(root) {
 	
 	function setSWFAddressValue(value, replaceState) {
 		///*
+		
 		if (html4) {
 			try {
-				SWFAddress.setValue(value);
+				SWFAddress.setValue(SWFAddress.fragId+"/"+value);
 			}
 			catch(e) {
 				window.location = "#"+value;
 			}
 			return;
 		}
-		
 		if (_lastValue === value) return;
+		
+		_lastValue = value;  // to asset immdeiate update change?
+		
 		//*/
 		//if (_pathHash[value] == undefined) alert("SORRY");
-		var validBranch = _getValidBranch( value.split("/") );
+		var validBranch = _pathHash[value] ? value : _getValidBranch( value.split("/") );  // go for exact match by default..
 		var hashAppend = value.slice(validBranch.length);
-		(replaceState ? History.replaceState : History.pushState)({id:SUID++}, null, _pathHash[validBranch].src + (hashAppend != "/" && hashAppend ? "#"+hashAppend : "" )  );
-		//GaiaDebug.log("Pushing state:"+replaceState + ", "+validBranch + ", " +_pathHash[validBranch].src + (hashAppend != "/" && hashAppend ? "#"+hashAppend : "" ) );
 		
+		(replaceState ? History.replaceState : History.pushState)({id:SUID++}, null, rootURL + _pathHash[validBranch].src + ( hashAppend ? "#"+hashAppend : "" )  );
+		//GaiaDebug.log("Pushing state:"+replaceState + ", "+validBranch + ", " +_pathHash[validBranch].src + (hashAppend != "/" && hashAppend ? "#"+hashAppend : "" ) );
 		//GaiaDebug.log("change");
 	}
 	
@@ -1267,17 +1405,26 @@ Gaiajax.api = (function(root) {
 	
 	
 	function hashChange() {  // html5 hash change with SWFAddress
+
 		var src = _getSrcURL(window.location.href);  
-		
+
 		if (src != (targetPageObj || curPageObj).src) {
+
 			_fakeURLState = { url:src };
+
+		//GaiaDebug.log(fullValue + ", "+_getSrcURL(History.getState().url) + ", "+ _pageHash[_getSrcURL(History.getState().url)].path );
+
+			_lastValue = api.getValue().slice(1);
+
 			loadPageK(_pageHash[src]);  // ensure page synchronisation occurs even as a result of hash changes
 		}
-		else _onDeeplink.dispatch( SWFAddress.getValue() );
+		else {
+			_onDeeplink.dispatch( SWFAddress.getValue() );
+		}
 	}
 
 	
-	function handleChange(e) {
+	function handleChange() {
 
 		// something in prev project for depeciating
 		//if (hrefRelId == null && _isIn && currentContent!=null) currentContent.trigger(e.type, e);
@@ -1287,21 +1434,35 @@ Gaiajax.api = (function(root) {
 		//	return;
 		//}
 
+		
+		_onChange.dispatch();
+		
 		_fakeURLState = null; // flush away any temporary fake url state
 		
-		var fullValue = api.getValue();
-	
-		var path = fullValue.slice(1);
+		
+		
+		var fullValue = api.getValue();	
+		//GaiaDebug.log(fullValue + ", "+_getSrcURL(History.getState().url) + ", "+ _pageHash[_getSrcURL(History.getState().url)].path );
+		var path = fullValue.slice(1); 
+		//alert(fullValue + ", "+_getSrcURL(History.getState().url));
 		_lastValue = path;
+		
 		// TODO: remove trailing slashes for path??
 		
+		var validBranch =_pathHash[path] ? path :   _getValidBranch( path.split("/") );
 		
-		var validBranch = _getValidBranch( path.split("/") );
-		//GaiaDebug.log("A:"+validBranch);
+	
 		if ( validBranch  ) {  
+			var canonicalDeeplink = validDL( path.slice(validBranch.length) );
 			loadPageK( _pathHash[validBranch]  );
-			if (html4) _onDeeplink.dispatch( validDL( path.slice(validBranch.length) ) )
-			else _onDeeplink.dispatch( SWFAddress.getValue() );
+			
+			
+			if (html4) {
+				_onDeeplink.dispatch( canonicalDeeplink );
+			}
+			else {  // html5 lcoked down
+				_onDeeplink.dispatch( SWFAddress.getValue() );  
+			}
 		}
 		else {  // always revert to landing page if invalid page found. (TODO: technically, could include 404 page as well)
 			
