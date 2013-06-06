@@ -203,6 +203,7 @@ Gaiajax.api = (function(root) {
 	var toRemoveAssetNodes = null;
 	var loadCount  = 0;
 	var _isIn = false;
+	var qStrAbs = false;
 	
 	var _loading = false;
 	var _siteTitle;
@@ -275,9 +276,12 @@ Gaiajax.api = (function(root) {
 	}
 	
 	function _getSrcURL(url) {
-
 		url = url.split("#")[0];
 		url =  rootURL ? url.replace(rootURL, "") : url.split("/").pop();
+		url = !qStrAbs ? url.split("?")[0] :  qStrAbs === true ? url : qStrAbs(url);
+	
+		url = url.indexOf(".") < 0 ? url.charAt(url.length-1) != "/" ? url : url.slice(0, url.length-1)   : url;
+	
 		url =  url != "" ? url : landingPage ? landingPage.src : "";
 		return url;
 	}
@@ -353,8 +357,10 @@ Gaiajax.api = (function(root) {
 		,"handleChange": function() {
 			handleChange();
 		}
-		,
-		"setRootURL": function(value) {
+		,"setQueryStringAbsolute": function(val) {
+			qStrAbs = val;
+		}
+		,"setRootURL": function(value) {
 			rootURL = value;
 		}
 		,"setRouting": function(value) {
@@ -760,7 +766,7 @@ Gaiajax.api = (function(root) {
 		}
 		loadCount++;
 		//GaiaDebug.log("Add:"+loadCount);
-		_ajaxReq = $.ajax(targetPage, { cache: true, data: {ajax:1,gaia:birthTime}  } )
+		_ajaxReq = $.ajax(rootURL +  targetPage, { cache: true, data: {ajax:1,gaia:birthTime}  } )
 		.done(function(e) { 
 			
 			var elem = $("<div>"+e+"</div>");
