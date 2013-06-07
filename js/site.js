@@ -762,6 +762,7 @@ Gaiajax.api = (function(root) {
 		
 		/*** Ajax load append content ***/
 		if (_ajaxReq!=null) {
+			_ajaxReq["gaiaCancelled"] = true;
 			_ajaxReq.abort();
 		}
 		loadCount++;
@@ -1065,8 +1066,10 @@ Gaiajax.api = (function(root) {
 	
 	function loadFailedDomHandler(e) {
 		currentContent = $("<div id='loadFailedHandler'>Page doc load failed</div>");
-		GaiaDebug.log("Load failed dom:"+(e.currentTarget ?   e.currentTarget.href || e.currentTarget.src : "not defined" ));
-		delayPoploadCount(e);
+		if (!e["gaiaCancelled"]) {
+			GaiaDebug.log("Load failed dom:"+(e===_ajaxReq ));
+			delayPoploadCount(e);
+		}
 	}
 	
 	function registerAsset(asset, dontHash) {
