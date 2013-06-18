@@ -798,8 +798,8 @@ Gaiajax.api = (function(root) {
 		loadCount--;	
 		//GaiaDebug.log(loadCount+ "," +param);
 		if (loadCount == 0) {
-		//setTimeout(doAjaxReady,1 );
-			doAjaxReady();
+			setTimeout(doAjaxReady,1 );
+			//doAjaxReady();
 			
 		}
 		
