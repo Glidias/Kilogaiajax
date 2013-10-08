@@ -20,4 +20,4 @@ What isn't available (or different from Gaia Flash framework)?
 
 For public api methods, refer to "this.api = ...." line in site.js for available methods. Public methods are accessed using the Gaiajax.api object.
 
-There's a lot of stuff not documented at the moment for the api, with varying use cases depending on whether your server supports Apache and Mod-rewrite.  More info/examples coming up soon.
+There's a lot of stuff not documented at the moment for the api, with varying use cases depending on whether your server supports Apache and Mod-rewrite.  More info/examples coming up soon. Please view https://github.com/Glidias/Kilogaiajax/wiki for more information.
