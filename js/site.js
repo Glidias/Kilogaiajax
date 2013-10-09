@@ -594,11 +594,12 @@ Gaiajax.api = (function(root) {
 		var _req;
 		
 		function _setData(data) {
-			return data;
+			_data = data;
 		}
 		function getData() {
 			return _data;
 		}
+		this.getData = getData;
 		
 		function onComplete(data) {
 			_setData(data);
