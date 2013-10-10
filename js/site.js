@@ -839,7 +839,6 @@ Gaiajax.api = (function(root) {
 		if (_gaTracker) {
 			_gaTracker = root["_gaq"] || (root["_gaq"]=[]);
 			_gaTracker.push( ['_trackPageview', "/"+(_routing ? curPageObj.path : curPageObj.src)] );
-			
 		}
 	
 	//	GaiaDebug.log("TRANSITION IN");
@@ -1275,17 +1274,6 @@ Gaiajax.api = (function(root) {
 		else {  // link is html5 style, assuming it wasn't redirected above by html4
 			if (html4) alert("Failed to catch redirect for html4!");
 			_startPage = detectPage;
-		}
-		
-				if (root["MobileRedirect"]) {  // app-specific
-				
-				if (_startPage == null) _startPage = landingPage;
-				
-				var deeplink = api.getDeeplink();
-	
-				deeplink =  deeplink!= "/" ? "#"+deeplink : "";
-				
-				window.location.href = "mobile/" + _startPage.src + deeplink;
 		}
 
 		
