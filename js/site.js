@@ -203,7 +203,6 @@ Gaiajax.api = (function(root) {
 	var toRemoveAssetNodes = null;
 	var loadCount  = 0;
 	var _isIn = false;
-	var qStrAbs = false;
 	
 	var _loading = false;
 	var _siteTitle;
@@ -231,6 +230,8 @@ Gaiajax.api = (function(root) {
 	var _onChange = new GaiaSignal();
 	
 	var _onPreloadSiteProgress = new GaiaSignal();
+	
+	var _onDemandPageHandler;
 	
 	
 	var _firstTime = true;
@@ -275,14 +276,21 @@ Gaiajax.api = (function(root) {
 		return curParent;
 	}
 	
-	function _getSrcURL(url) {
+	function _getSrcURL(url, qStrAbs) {
 		url = url.split("#")[0];
 		url =  rootURL ? url.replace(rootURL, "") : url.split("/").pop();
 		url = !qStrAbs ? url.split("?")[0] :  qStrAbs === true ? url : qStrAbs(url);
+		if (qStrAbs) {
+			var splitQStr = url.split("?");
+			if (splitQStr.length > 1  ) {
+				if (splitQStr[0].indexOf(".") < 0 && splitQStr[0].charAt(splitQStr.length-1) != "/")  url = splitQStr[0] + "?" + splitQStr[1];
+			}
+		}
 	
 		url = url.indexOf(".") < 0 ? url.charAt(url.length-1) != "/" ? url : url.slice(0, url.length-1)   : url;
 	
 		url =  url != "" ? url : landingPage ? landingPage.src : "";
+		
 		return url;
 	}
 	
@@ -322,17 +330,24 @@ Gaiajax.api = (function(root) {
 	var onDemandPageURL;
 	var onDemandPath;
 
-	function addPage(url, path, id, assetPath, title) {
+	function addPage(url, path, id, assetPath, title, qStrAbs) {
+		
+		var parentPath = path;
+		if (!path) path = id;
+		else path += "/"+id;
+		path += path ? "/"+id : id;
+		
+		
 		id = id != null ? id : "~ondemand";
 		title = title != null ? title :  (curPageObj ? curPageObj.title : "Untitled");
-		
+	
 		var assets;
 		
-		var parentPath = assetPath;
+		
 		assetPath = _pathHash[assetPath];
 		assets = assetPath != null ? assetPath.pageAssets : null;
 		
-		var dPageData = { "@attributes":{id:id, title:title, id:id, src:url} };
+		var dPageData = { "@attributes":{id:id, title:title, id:id, src:url, query:(qStrAbs? "1" : false)} };
 		var kv =new KeyValue(url, assets, title, id, dPageData, path );
 		
 		_getValidBranchNode(parentPath.split("/"))[id] = {id:id};
@@ -344,21 +359,23 @@ Gaiajax.api = (function(root) {
 	this.api = {
 		"setOnDemandPage": function(url, path, id, assetPath, title) {  // set an on-demand page (on-the-fly) for viewing
 			
-			if (onDemandPageURL) { // delete previous entry to avoid bloating!
-			//	delete _pageHash[onDemandPageURL];  
+			if (onDemandPageURL && _pageHash[onDemandPageURL]) { // delete previous entry to avoid bloating!
+				//delete _pageHash[onDemandPageURL];  
 			}
-			if (onDemandPath) { // delete previous entry to avoid bloating!
-			//	delete _pageHash[onDemandPath];  
+			if (onDemandPath && _pathHash[onDemandPath]) { // delete previous entry to avoid bloating!
+	
+				//delete _getValidBranchNode(onDemandPath.split("/"))[_pathHash[onDemandPath].id];
+				//delete _pathHash[onDemandPath];  
 			}
-			addPage(url, path, id, assetPath, title);
+			addPage(url, path, id, assetPath, title,  _pathHash[assetPath] && _pathHash[assetPath].json["@attributes"].query == "1" );
 			onDemandPageURL = url;
 			onDemandPath = path;
 		}
+		,"setOnDemandPageHandler": function(method) {
+			_onDemandPageHandler = method;
+		}
 		,"handleChange": function() {
 			handleChange();
-		}
-		,"setQueryStringAbsolute": function(val) {
-			qStrAbs = val;
 		}
 		,"setRootURL": function(value) {
 			rootURL = value;
@@ -425,6 +442,7 @@ Gaiajax.api = (function(root) {
 		,"getCurrentPage": function() {
 			return curPageObj;
 		}
+		,"getSrcURL":_getSrcURL
 		,"getRoot": function() {
 			return root;
 		}
@@ -432,6 +450,7 @@ Gaiajax.api = (function(root) {
 			return _pathHash[path];
 		}
 		,"getPageBySrc": function(src) {
+			
 			return _pageHash[src];
 		}
 		,"getCurrentBranch": function() {
@@ -482,7 +501,7 @@ Gaiajax.api = (function(root) {
 			return currentContent;
 		}
 		,"getPreloadJS": function() { return _preloadJS; }
-		,"getValue": function() { if (html4) return SWFAddress.getValue(); var dlAdd = History.getHash(); dlAdd = dlAdd === "/" ? "" : dlAdd; var state = _fakeURLState || History.getState(); var urler = _getSrcURL(state.url); return "/"+(_pageHash[urler] ?  _pageHash[urler].path :  urler.indexOf(".") < 0 ? urler : "") + dlAdd; } //SWFAddress.getValue  // temp pop
+		,"getValue": function() { if (html4) return SWFAddress.getValue(); var dlAdd = History.getHash(); dlAdd = dlAdd === "/" ? "" : dlAdd; var state = _fakeURLState || History.getState(); var urler = _getSrcURL(state.url); if (_pageHash[urler] && _pageHash[urler].json["@attributes"].query == "1") urler = _getSrcURL(state.url, true); return "/"+(_pageHash[urler] ?  _pageHash[urler].path :  urler.indexOf(".") < 0 ? urler : "") + dlAdd; } //SWFAddress.getValue  // temp pop
 		,"getURL5": function() { return _getSrcURL(History.getState().url); } //SWFAddress.getValue  // temp pop
 		,"getTitle": function() { return window.document.title; } 
 		,"onDeeplink": _onDeeplink
@@ -548,7 +567,7 @@ Gaiajax.api = (function(root) {
 	}
 	function hrefLinkHandler(e) {
 		var elem = $(e.currentTarget);
-		var srcHref = elem.attr("href");
+		var srcHref = elem.attr("href") || "";
 		var href;
 		var hrefHashIndex = srcHref.indexOf("#");
 		href = hrefHashIndex >=0 ? srcHref.slice(0, hrefHashIndex) : srcHref;
@@ -556,18 +575,20 @@ Gaiajax.api = (function(root) {
 	
 		
 		var rel = hashValue;
-		
 		var pageDoc =  _pageHash[href];
-		
+	
+		if (!pageDoc && _onDemandPageHandler) {	
+			_onDemandPageHandler(href, elem);
+			pageDoc = _pageHash[href];
+		}
 		
 		if (pageDoc) {
-		
 			setSWFAddressValue(pageDoc.path + (rel ? rel.charAt(0) != "/" ? "/"+rel : rel : "") );
 
 			return false;
 		}
 		else { // go defualt link?
-		
+			GaiaDebug.log("Could not resolve hrefLink:"+href);
 		}
 		return false;
 	}
@@ -594,12 +615,11 @@ Gaiajax.api = (function(root) {
 		var _req;
 		
 		function _setData(data) {
-			_data = data;
+			return data;
 		}
 		function getData() {
 			return _data;
 		}
-		this.getData = getData;
 		
 		function onComplete(data) {
 			_setData(data);
@@ -681,11 +701,11 @@ Gaiajax.api = (function(root) {
 
 	
 	function gotoPageURL(url, underGaia) {
-		
+		if (!underGaia) _onBeforeGoto.dispatch();
 		var pageDoc = _pageHash[url];
 
 		if (!pageDoc) return false;
-		if (!underGaia) _onBeforeGoto.dispatch(pageDoc);
+		
 		
 		if (targetPage == url && !underGaia) return 1;
 		targetPage = url;
@@ -700,7 +720,7 @@ Gaiajax.api = (function(root) {
 		
 		
 		
-		if (!underGaia) _onAfterGoto.dispatch(pageDoc);
+		if (!underGaia) _onAfterGoto.dispatch();
 		if (curPage == url) return 2;	
 		
 		
@@ -711,14 +731,14 @@ Gaiajax.api = (function(root) {
 		if (_pageTransiting ) {   // INTERRUPT
 			//log(" interrupt transitionIn:" + _isIn);
 			_isInterrupted = _isIn;	
-			//if (!underGaia) _onAfterGoto.dispatch(pageDoc);
+			//if (!underGaia) _onAfterGoto.dispatch();
 			return 3;
 		}
 		
 		if (currentContent != null) {
 		
 			transitionOutContent();
-			//if (!underGaia) _onAfterGoto.dispatch(pageDoc);
+			//if (!underGaia) _onAfterGoto.dispatch();
 			return true;
 		}
 
@@ -768,7 +788,8 @@ Gaiajax.api = (function(root) {
 		}
 		loadCount++;
 		//GaiaDebug.log("Add:"+loadCount);
-		_ajaxReq = $.ajax(rootURL +  targetPage, { cache: true, data: {ajax:1,gaia:birthTime}  } )
+		
+		_ajaxReq = (pageDoc.json["@attributes"].query != "1" ? $.ajax(rootURL +  targetPage, { cache: true, data: {ajax:1,gaia:birthTime}  } ) : $.ajax(rootURL +  targetPage, { cache: false} ))
 		.done(function(e) { 
 			
 			var elem = $("<div>"+e+"</div>");
@@ -799,8 +820,8 @@ Gaiajax.api = (function(root) {
 		loadCount--;	
 		//GaiaDebug.log(loadCount+ "," +param);
 		if (loadCount == 0) {
-			setTimeout(doAjaxReady,1 );
-			//doAjaxReady();
+		setTimeout(doAjaxReady,1 );
+		//	doAjaxReady();
 			
 		}
 		
@@ -839,6 +860,7 @@ Gaiajax.api = (function(root) {
 		if (_gaTracker) {
 			_gaTracker = root["_gaq"] || (root["_gaq"]=[]);
 			_gaTracker.push( ['_trackPageview', "/"+(_routing ? curPageObj.path : curPageObj.src)] );
+			
 		}
 	
 	//	GaiaDebug.log("TRANSITION IN");
@@ -1052,7 +1074,10 @@ Gaiajax.api = (function(root) {
 
 	function getFileExt(src) {
 		var arr = src.split(".");
-		return arr[arr.length-1];
+		//alert( arr.length + ", :" + arr) ;
+		if (arr.length == 1) {return "js"; } else {
+			return arr[arr.length-1];
+		}
 	}
 	
 	function alertTraceObj(obj) {
@@ -1078,7 +1103,7 @@ Gaiajax.api = (function(root) {
 		
 		if (_assetHash[src]) return;
 		
-		var ext = getFileExt(src);
+		var ext =  (attrib.type != null) ? attrib.type : getFileExt(src);
 		var req;
 		var node;
 		var useAssetHash;
@@ -1106,8 +1131,11 @@ Gaiajax.api = (function(root) {
 		else if (ext == "js") {
 			loadCount++;
 		//	GaiaDebug.log("AddJS:"+loadCount);
-			req = $.getScript(src + "?"+birthTime, Promise(delayPoploadCount)).fail(Promise(SrcFailedProxy(src)));
+	
+			//console.log(nSrc);
+			req = $.getScript(src + ((src.indexOf("?") >=0 ) ? "" : ("?"+birthTime)), Promise(delayPoploadCount)).fail(Promise(SrcFailedProxy(src)));
 			 if (!dontHash)  _ajaxHash[getNewId()] = req;  
+			 
 		}
 		else if (ext == "jpg" || ext == "png" || ext == "gif" ) {   // TODO: extension to class map for subsequent assets instead!
 			loadCount++;
@@ -1237,7 +1265,10 @@ Gaiajax.api = (function(root) {
 		// need a detectURL link as well
 		
 		
-		var filename =  _getSrcURL(url);
+		if (detectPage && detectPage.json["@attributes"].query == "1") {
+			filename = _getSrcURL(url, true);
+			detectPage  = _pageHash[filename];
+		}
 	
 		if (html4 && detectPage && filename != landingPage.src) {
 			root["gaiaRedirect"] = detectPage.path;  // TODO: include any necessary deeplinks into path
@@ -1249,6 +1280,7 @@ Gaiajax.api = (function(root) {
 			var docIndex = docLoc.indexOf("#");
 			docLoc = docIndex != -1 ? docLoc.slice(docIndex+1) : null;
 			var tryRedirect =api.getValidBranch( root["gaiaRedirect"] );
+			
 			if (_pathHash[tryRedirect]) { //pageList["@attributes"].src+
 			
 				document.location = (rootURL ? rootURL : ".")+"#"+SWFAddress.fragId+"/"+tryRedirect + (docLoc ? docLoc.charAt(0) != "/" ? "/" + docLoc : docLoc   : "");
@@ -1275,7 +1307,6 @@ Gaiajax.api = (function(root) {
 			if (html4) alert("Failed to catch redirect for html4!");
 			_startPage = detectPage;
 		}
-
 		
 		var readyCall = (function() {	
 			
