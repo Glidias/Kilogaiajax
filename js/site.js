@@ -358,15 +358,6 @@ Gaiajax.api = (function(root) {
 	
 	this.api = {
 		"setOnDemandPage": function(url, path, id, assetPath, title) {  // set an on-demand page (on-the-fly) for viewing
-			
-			if (onDemandPageURL && _pageHash[onDemandPageURL]) { // delete previous entry to avoid bloating!
-				//delete _pageHash[onDemandPageURL];  
-			}
-			if (onDemandPath && _pathHash[onDemandPath]) { // delete previous entry to avoid bloating!
-	
-				//delete _getValidBranchNode(onDemandPath.split("/"))[_pathHash[onDemandPath].id];
-				//delete _pathHash[onDemandPath];  
-			}
 			addPage(url, path, id, assetPath, title,  _pathHash[assetPath] && _pathHash[assetPath].json["@attributes"].query == "1" );
 			onDemandPageURL = url;
 			onDemandPath = path;
