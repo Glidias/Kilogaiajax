@@ -15,6 +15,8 @@
 	<script type="text/javascript">
 		// -- OPTIONALS 
 		
+		//Gaiajax.api.setContentWrapper("#contentWrapper");
+		
 		/* Declare global variable to load site json output */
 		//gaiaSiteJson = "json/site.json";  // "scripts/site.php" <- default location php which outputs "xml/site.xml" to json format.
 		
@@ -26,10 +28,9 @@
 	</script>
 </head>
 <body>
-	
-	
+	<div>
 		<div id="nav">
-			You are accessing stuff from index.html template. Below is the nav that is found in the template:
+			Below is the nav that is found in the template:
 			<br/>
 			<a class="gaiaHrefLink" href="index.html">Home</a>
 			<a class="gaiaHrefLink" href="about.html">About</a>
@@ -37,15 +38,11 @@
 			<a class="gaiaHrefLink" href="rawcontent.html">Raw content</a>
 		</div>
 		<br/>
-		<!-- Caveat at the moment: For some strange reason, contentWrapper must exist in an existing root div (not body tag) in order to be "discovered" by Jquery. -->
-		<!-- All page-specific content exists in contentWrapper, and will be emptied upon transitioned out -->
-		
-		
-		<div id="contentWrapper" style="background-color:#cccccc">
-			<div id="home">  
-				HOME
-			</div>
+		<div id="contentWrapper" style="background-color:#cccccc" >
+				<div id="home">  
+					HOME
+				</div>
 		</div>
-	
+	</div>
 </body>
 </html>

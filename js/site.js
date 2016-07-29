@@ -358,6 +358,16 @@ Gaiajax.api = (function(root) {
 	
 	this.api = {
 		"setOnDemandPage": function(url, path, id, assetPath, title) {  // set an on-demand page (on-the-fly) for viewing
+			
+			if (onDemandPageURL && _pageHash[onDemandPageURL]) { // delete previous entry to avoid bloating!
+				//delete _pageHash[onDemandPageURL];  
+			}
+			if (onDemandPath && _pathHash[onDemandPath]) { // delete previous entry to avoid bloating!
+	
+				//delete _getValidBranchNode(onDemandPath.split("/"))[_pathHash[onDemandPath].id];
+				//delete _pathHash[onDemandPath];  
+			}
+			
 			addPage(url, path, id, assetPath, title,  _pathHash[assetPath] && _pathHash[assetPath].json["@attributes"].query == "1" );
 			onDemandPageURL = url;
 			onDemandPath = path;
@@ -557,11 +567,19 @@ Gaiajax.api = (function(root) {
 		return false;
 	}
 	function hrefLinkHandler(e) {
+		
+		e.preventDefault();
+		
 		var elem = $(e.currentTarget);
 		var srcHref = elem.attr("href") || "";
 		var href;
 		var hrefHashIndex = srcHref.indexOf("#");
 		href = hrefHashIndex >=0 ? srcHref.slice(0, hrefHashIndex) : srcHref;
+		
+	
+		href = _getSrcURL(href);
+		//alert("Resolved href:"+href);
+		
 		var hashValue = hrefHashIndex >= 0 ?  srcHref.slice(hrefHashIndex+1) : null;
 	
 		
@@ -581,6 +599,7 @@ Gaiajax.api = (function(root) {
 		else { // go defualt link?
 			GaiaDebug.log("Could not resolve hrefLink:"+href);
 		}
+		
 		return false;
 	}
 	
@@ -794,11 +813,13 @@ Gaiajax.api = (function(root) {
 				if (currentContent.length == 0 ) {
 					currentContent = elem.find(contentWrapperQ);
 					currentContent = currentContent.children();
+					
 				}
 				if (currentContent.length == 0 ) {
 					GaiaDebug.log("Failed to retrieve contentWrapper:"+e);
 					currentContent = $("<div id='contentWrapperFailed'>Content retrieved from contentWrapper failed</div>");
 				}
+		//		console.log(currentContent);
 			}	
 			popLoadCount(e);
 		})
@@ -836,7 +857,27 @@ Gaiajax.api = (function(root) {
 		hidePreloader();
 		_onAfterPreload.dispatch();
 
-		contentWrapper.append(currentContent);
+		// allows multiple contentWrappers now!
+		var primaryContentWrapper = $(contentWrapper[0]);
+		currentContent.each( function(index, item) {
+			item = $(item);
+			
+			// do not add if item id already exists, assumed keep  (or consider perform replacement?)
+			if (item.attr("id") && $("#"+item.attr("id")).length) {
+				var toReplace = $("#"+item.attr("id"));
+				currentContent[index] = toReplace[0];
+				return;
+			}
+			
+			var parentId = item.parent().attr("id");
+			if (parentId && $("#"+parentId).length ) {
+				$("#"+parentId).append(item);
+				
+			}
+			else {
+				primaryContentWrapper.append(item);
+			}
+		});
 
 		api.bindHrefLinks( _gaiaHrefLinks=currentContent.find("a.gaiaHrefLink"));
 		api.bindRelLinks( _gaiaRelLinks = currentContent.find("a.gaiaRelLink"));
@@ -881,10 +922,12 @@ Gaiajax.api = (function(root) {
 	
 	 // async delay required due to firefox flickering with webkit transitions
 	function delayTransitionInComplete() { 
-		setTimeout(transitionInComplete, 1);
+		//setTimeout(transitionInComplete, 0);
+		transitionInComplete();
 	}
 	function delayTransitionOutComplete() {
-		setTimeout(transitionOutComplete, 1);
+		//setTimeout(transitionOutComplete, 0);
+		transitionOutComplete();
 	}
 	
 	function transitionInComplete() {
@@ -908,6 +951,12 @@ Gaiajax.api = (function(root) {
 		//alert("COMPLETE!");
 	}
 
+
+	function filterGaiaKeep() {
+		return !$(this).data("gaiakeep");
+	}
+
+	
 	function transitionOutComplete() {
 
 		//GaiaDebug.log("OUT COMPLETE");
@@ -940,8 +989,10 @@ Gaiajax.api = (function(root) {
 		_onAfterTransitionOut.dispatch();
 		
 		//alert("OUT COMPLETE!");
-		contentWrapper.empty();
-		
+		//contentWrapper.empty();
+		//alert(currentContent.length +":<prev");
+		var checkFilter = currentContent.filter(filterGaiaKeep);
+		checkFilter.remove();
 		_pageAssets = {};
 		loadContent();
 		//gotoPageURL(targetPage, true);
@@ -975,11 +1026,11 @@ Gaiajax.api = (function(root) {
 	
 	function showPreloader() {
 		_loading = true;
-		$("#preloader").css("visibility", "visible");
+		$("#preloader").css("visibility", "visible").addClass("show");
 	}
 	function hidePreloader() {
 		_loading = false;
-		$("#preloader").css("visibility", "hidden");
+		$("#preloader").css("visibility", "hidden").removeClass("show");
 	}
 	
 	function collectPage(pageData) {
@@ -1395,6 +1446,8 @@ Gaiajax.api = (function(root) {
 		//GaiaDebug.log("change");
 	}
 	
+	
+	
 	function onDocumentReady() {
 		
 
@@ -1405,11 +1458,11 @@ Gaiajax.api = (function(root) {
 		contentWrapper = $(contentWrapperQ);
 		if (contentWrapper.length == 0) {
 			contentWrapper = $("<div id='contentWrapper'></div>");
-			$("html body").prepend(contentWrapper);
+			//	$("html body").prepend(contentWrapper);
 		}
-		contentWrapper.empty();
 		
-
+		//.filter( filterGaiaKeep )
+		contentWrapper.children().remove();
 		
 		$.ajax({
 			url: root["gaiaSiteJson"] || "scripts/site.php",
