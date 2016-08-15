@@ -891,7 +891,7 @@ Gaiajax.api = (function(root) {
 		
 		if (_gaTracker) {
 			_gaTracker = root["_gaq"] || (root["_gaq"]=[]);
-			_gaTracker.push( ['_trackPageview', "/"+(_routing ? curPageObj.path : curPageObj.src)] );
+			_gaTracker.push( ['_trackPageview', (_routing ? "/"+curPageObj.path : _getSrcURL(curPageObj.src) )] );
 			
 		}
 	
