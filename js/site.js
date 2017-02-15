@@ -374,6 +374,7 @@ Gaiajax.api = (function(root) {
 			onDemandPath = path;
 		}
 		,"setOnDemandPageHandler": function(method) {
+			
 			_onDemandPageHandler = method;
 		}
 		,"handleChange": function() {
@@ -459,6 +460,8 @@ Gaiajax.api = (function(root) {
 			return curPageObj ? curPageObj.path : "";
 		}
 		,"setDeeplink": function(path) {
+			if (path == null) path = "";
+			path += "";
 			if (!html4) {
 				SWFAddress.setValue(path);			
 				return;
@@ -586,8 +589,9 @@ Gaiajax.api = (function(root) {
 		
 		var rel = hashValue;
 		var pageDoc =  _pageHash[href];
-	
+		
 		if (!pageDoc && _onDemandPageHandler) {	
+		
 			_onDemandPageHandler(href, elem);
 			pageDoc = _pageHash[href];
 		}
