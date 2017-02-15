@@ -277,7 +277,7 @@ Gaiajax.api = (function(root) {
 	}
 	
 	function _getSrcURL(url, qStrAbs) {
-		url = url.replace(/\/*$/, "");
+	
 		url = url.split("#")[0];
 		url =  rootURL ? url.replace(rootURL, "") : url.split("/").pop();
 		url = !qStrAbs ? url.split("?")[0] :  qStrAbs === true ? url : qStrAbs(url);
@@ -381,6 +381,7 @@ Gaiajax.api = (function(root) {
 			handleChange();
 		}
 		,"setRootURL": function(value) {
+			
 			rootURL = value;
 		}
 		,"setRouting": function(value) {
